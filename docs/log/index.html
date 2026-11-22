@@ -1,0 +1,210 @@
+<title>anthropic4s Build Log</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one 880px reading column; a status strip up top, then tracker, modules, decisions, dated entries. */
+:root {
+  --ground: #F5F6F8;
+  --surface: #FFFFFF;
+  --ink: #10131A;
+  --muted: #4A5160;
+  --line: #D9DDE6;
+  --accent: #5B4BE8;
+  --tile: #5B4BE8;
+  --mint: #0B7A62;
+  --spark: #3DE0B8;
+  --chip-now-bg: #E7E3FF;
+  --chip-now-ink: #3B2FB8;
+  --chip-done-bg: #D6F5EC;
+  --chip-done-ink: #0A6350;
+  --chip-plan-bg: #E6E9F0;
+  --chip-plan-ink: #4A5160;
+  --display: 'Space Grotesk', system-ui, sans-serif;
+  --body: 'Inter', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #10131A; --surface: #181C26; --ink: #F5F6F8; --muted: #A9B0BF; --line: #2A3040;
+    --accent: #A79CFF; --tile: #7B6CFF; --mint: #3DE0B8;
+    --chip-now-bg: #2B2560; --chip-now-ink: #CFC8FF;
+    --chip-done-bg: #0F3D33; --chip-done-ink: #8FF0D6;
+    --chip-plan-bg: #232836; --chip-plan-ink: #A9B0BF;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #10131A; --surface: #181C26; --ink: #F5F6F8; --muted: #A9B0BF; --line: #2A3040;
+  --accent: #A79CFF; --tile: #7B6CFF; --mint: #3DE0B8;
+  --chip-now-bg: #2B2560; --chip-now-ink: #CFC8FF;
+  --chip-done-bg: #0F3D33; --chip-done-ink: #8FF0D6;
+  --chip-plan-bg: #232836; --chip-plan-ink: #A9B0BF;
+}
+body {
+  background: var(--ground); color: var(--ink);
+  font-family: var(--body); font-size: 15px; line-height: 1.6;
+  padding-block: 40px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.page { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 44px; }
+header { display: flex; flex-direction: column; gap: 20px; }
+.brand { display: flex; align-items: center; gap: 16px; }
+.brand svg { flex: none; }
+.wordmark { font-family: var(--display); font-size: 40px; font-weight: 500; letter-spacing: -0.03em; line-height: 1; }
+.wordmark b { font-weight: 700; color: var(--accent); }
+.lede { max-width: 62ch; color: var(--muted); margin: 0; }
+.status { display: flex; flex-wrap: wrap; gap: 12px 28px; padding: 16px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.status div { display: flex; flex-direction: column; gap: 2px; min-width: 120px; }
+.label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.value { font-weight: 600; }
+h2 { font-family: var(--display); font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+section { display: flex; flex-direction: column; gap: 16px; }
+.milestones { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.ms { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 14px; align-items: baseline; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.ms .id { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.chip { font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.chip.now { background: var(--chip-now-bg); color: var(--chip-now-ink); }
+.chip.done { background: var(--chip-done-bg); color: var(--chip-done-ink); }
+.chip.plan { background: var(--chip-plan-bg); color: var(--chip-plan-ink); }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; }
+th { text-align: left; font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500; padding: 0 16px 8px 0; border-bottom: 1px solid var(--line); }
+td { padding: 10px 16px 10px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+code { font-family: var(--mono); font-size: 13px; }
+td code.art { color: var(--accent); white-space: nowrap; }
+dl { margin: 0; display: grid; grid-template-columns: minmax(120px, 180px) minmax(0, 1fr); gap: 10px 24px; }
+dt { font-weight: 600; }
+dd { margin: 0; color: var(--muted); }
+.entries { display: flex; flex-direction: column; gap: 22px; }
+.entry { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 20px; }
+.entry time { font-family: var(--mono); font-size: 13px; color: var(--muted); padding-top: 2px; }
+.entry h3 { font-family: var(--display); font-size: 17px; font-weight: 700; margin: 0 0 4px; }
+.entry p { margin: 0; color: var(--muted); max-width: 64ch; }
+.coords { font-family: var(--mono); font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; overflow-x: auto; white-space: nowrap; }
+.coords span { color: var(--mint); }
+footer { color: var(--muted); font-size: 13px; }
+@media (max-width: 560px) {
+  dl { grid-template-columns: minmax(0, 1fr); gap: 2px 0; }
+  dd { padding-bottom: 10px; }
+  .entry { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .wordmark { font-size: 32px; }
+}
+</style>
+<div class="page">
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 64 64" width="56" height="56" role="img" aria-label="anthropic4s mark">
+        <path d="M9 25 L9 7 L24 17 H40 L55 7 V45 a11 11 0 0 1 -11 11 H20 a11 11 0 0 1 -11 -11 Z" fill="var(--tile)" stroke="var(--tile)" stroke-width="3" stroke-linejoin="round"></path>
+        <polyline points="22,47 32,26 42,47" fill="none" stroke="var(--ground)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <line x1="27.5" y1="40" x2="36.5" y2="40" stroke="var(--spark)" stroke-width="5" stroke-linecap="round"></line>
+      </svg>
+      <div class="wordmark">anthropic<b>4s</b></div>
+    </div>
+    <p class="lede">Build log for an unofficial, pure-Scala SDK for the Claude API. Tagless-final on Cats Effect and fs2, with structured outputs from case classes, a typed tool runner and OpenTelemetry tracing.</p>
+    <div class="status">
+      <div><span class="label">Stage</span><span class="value">All milestones built</span></div>
+      <div><span class="label">Tests</span><span class="value">83 passing, offline</span></div>
+      <div><span class="label">Live API</span><span class="value">Not run yet</span></div>
+      <div><span class="label">Scala</span><span class="value">2.13.18</span></div>
+      <div><span class="label">API version</span><span class="value">2026-10-21</span></div>
+      <div><span class="label">Released</span><span class="value">Nothing yet</span></div>
+      <div><span class="label">Updated</span><span class="value">2026-11-22</span></div>
+    </div>
+  </header>
+
+  <section>
+    <h2>Milestones</h2>
+    <div class="milestones">
+      <div class="ms"><span class="id">M0</span><span>Logo, this log, build skeleton, binary-compatibility spike</span><span class="chip done">done</span></div>
+      <div class="ms"><span class="id">M1</span><span>Wire model, codec DSL, golden fixtures</span><span class="chip done">done</span></div>
+      <div class="ms"><span class="id">M2</span><span><code>messages.create</code>, config, typed errors, raw responses. First usable snapshot</span><span class="chip done">done</span></div>
+      <div class="ms"><span class="id">M3</span><span>Retries, timeouts, request options, beta flags</span><span class="chip done">done</span></div>
+      <div class="ms"><span class="id">M4</span><span>Streaming: SSE events, accumulator, <code>finalMessage</code></span><span class="chip done">done</span></div>
+      <div class="ms"><span class="id">M5</span><span>Schema derivation, <code>messages.parse</code>, Play JSON module</span><span class="chip done">done</span></div>
+      <div class="ms"><span class="id">M6</span><span>Tools and the tool runner (agent loop)</span><span class="chip done">done</span></div>
+      <div class="ms"><span class="id">M7</span><span>OpenTelemetry tracing with otel4s</span><span class="chip done">done</span></div>
+      <div class="ms"><span class="id">M8</span><span>Token counting, Models, Batches, Files, pagination</span><span class="chip done">done</span></div>
+      <div class="ms"><span class="id">M9</span><span>Future facade, testkit, README, Play guide, compiled examples, CI</span><span class="chip done">done</span></div>
+      <div class="ms"><span class="id">Next</span><span>Live API run, first commit, docs site, Scala 3 for the remaining modules</span><span class="chip plan">open</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Modules</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Artifact</th><th>Depends on</th><th>Holds</th></tr></thead>
+        <tbody>
+          <tr><td><code class="art">anthropic4s-model</code></td><td>cats-core, circe</td><td>Wire types and codecs, open enums, message accumulator. No Cats Effect.</td></tr>
+          <tr><td><code class="art">anthropic4s-schema</code></td><td>circe, magnolia</td><td><code>Schema[A]</code>: JSON Schema, decoder and encoder from one derivation.</td></tr>
+          <tr><td><code class="art">anthropic4s-core</code></td><td>model, schema, cats-effect, fs2, http4s-client</td><td>Client algebras, retry and timeout executor, SSE, tool runner, telemetry SPI.</td></tr>
+          <tr><td><code class="art">anthropic4s</code></td><td>core, http4s-ember-client</td><td>The default artifact: <code>AnthropicClient.resource[F]</code> and the Future bridge.</td></tr>
+          <tr><td><code class="art">anthropic4s-play-json</code></td><td>schema, play-json</td><td>Structured outputs and tool inputs from a Play <code>Format[A]</code>.</td></tr>
+          <tr><td><code class="art">anthropic4s-otel4s</code></td><td>core, otel4s</td><td>Tracing that mirrors the Java SDK span contract.</td></tr>
+          <tr><td><code class="art">anthropic4s-testkit</code></td><td>core</td><td>Scripted fake model, response builders, schema laws.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="coords">libraryDependencies += <span>"io.github.zakariahere" %% "anthropic4s" % "&lt;not published yet&gt;"</span></div>
+  </section>
+
+  <section>
+    <h2>Decisions</h2>
+    <dl>
+      <dt>Pure Scala</dt><dd>No dependency on the Java SDK, so no Kotlin runtime and no Jackson version pinning in Play apps.</dd>
+      <dt>Effects</dt><dd>Tagless-final <code>F[_]</code> on Cats Effect 3. Streams are <code>fs2.Stream</code>, the client is a <code>Resource</code>.</dd>
+      <dt>Codecs</dt><dd>Hand-written circe codecs through a small field DSL. Same source on Scala 2.13 and 3, no macros.</dd>
+      <dt>Forward compatibility</dt><dd>Unknown content blocks and events round-trip losslessly. Every object keeps unrecognised fields in <code>extras</code>.</dd>
+      <dt>Binary compatibility</dt><dd>SDK types use private constructors with <code>withX</code> builders, so a new API field never breaks compiled user code.</dd>
+      <dt>One type tree</dt><dd>Beta features are flags on the request, not a parallel set of <code>Beta*</code> types.</dd>
+      <dt>Sampling parameters</dt><dd><code>temperature</code>, <code>top_p</code> and <code>top_k</code> are rejected on API version 2026-10-21, so they are not modeled.</dd>
+      <dt>Telemetry</dt><dd>Traces only in v1. Prompt and response content is exported only in opt-in content mode.</dd>
+    </dl>
+  </section>
+
+  <section>
+    <h2>Log</h2>
+    <div class="entries">
+      <div class="entry">
+        <time datetime="2026-11-22">2026-11-22</time>
+        <div><h3>What is not done</h3><p>No request has been sent to the real API: every test runs against fakes or a local server. Nothing is committed or published. Binary compatibility is proven at the source level only; MiMa starts comparing once a first version exists. Only the wire model compiles on Scala 3. There is no docs site, only the README, a Play guide and the compiled examples.</p></div>
+      </div>
+      <div class="entry">
+        <time datetime="2026-11-22">2026-11-22</time>
+        <div><h3>M7 to M9 · Tracing, Batches, Files, Play</h3><p>A traced agent run is one tree: the runner, each request, each tool call, and any span the tool opens itself. With default settings no prompt or reply text reaches a span, and a test asserts it. The default artifact has no Kotlin and no Jackson on its classpath. The wire model compiles and passes its tests on Scala 3 unchanged, and CI now checks that.</p></div>
+      </div>
+      <div class="entry">
+        <time datetime="2026-11-22">2026-11-22</time>
+        <div><h3>M6 · Tool runner</h3><p>Tools are functions from a case class to an effect. Calls of one turn run concurrently and their results return in order in one message: three tools sleeping 300, 100 and 200 ms finish in 300 ms. A refusal, a token limit or an operator abort ends a run as a value, not an exception.</p></div>
+      </div>
+      <div class="entry">
+        <time datetime="2026-11-22">2026-11-22</time>
+        <div><h3>M5 · Structured outputs</h3><p><code>messages.parse[A]</code> works for any case class with no instance to declare. One derivation yields the JSON Schema, the decoder and the encoder, so they cannot disagree. With Play JSON, <code>PlaySchema.derived[A]</code> pairs that schema with your <code>Format</code>. A planned blanket import for Play was dropped: it also matched <code>Format[String]</code> and broke derivation from the inside.</p></div>
+      </div>
+      <div class="entry">
+        <time datetime="2026-11-22">2026-11-22</time>
+        <div><h3>M2 to M4 · Client, retries, streaming</h3><p>Real sockets exposed what the in-memory fake could not: Ember spends up to 5 seconds draining a half-read response before closing it, so cancelling a stream stalled. Abandoned streams now close at once, and completed ones are read to the end of the body so the connection is reused for the next turn. The non-streaming timeout stays at a flat 10 minutes instead of shrinking with <code>max_tokens</code>.</p></div>
+      </div>
+      <div class="entry">
+        <time datetime="2026-11-22">2026-11-22</time>
+        <div><h3>M0 and M1 · Build and wire model</h3><p>A compile-time test proves the binary-compatibility pattern: constructors, <code>copy</code> and positional patterns of SDK types do not compile for users, <code>withX</code> builders do. A round-trip law covers the wire model, including block types and fields the SDK has never seen.</p></div>
+      </div>
+      <div class="entry">
+        <time datetime="2026-11-22">2026-11-22</time>
+        <div><h3>Identity</h3><p>Three logo directions drawn. Working pick is the cat-eared tile holding an A: it stays legible at 16 px and reads as Cats plus the API it wraps. Mark saved to <code>docs/assets</code>.</p></div>
+      </div>
+      <div class="entry">
+        <time datetime="2026-11-22">2026-11-22</time>
+        <div><h3>Plan approved</h3><p>Ten milestones, seven published modules. Play JSON added as an optional module after the first design pass, so <code>Json.format[A]</code> can drive structured outputs.</p></div>
+      </div>
+      <div class="entry">
+        <time datetime="2026-11-22">2026-11-22</time>
+        <div><h3>Research</h3><p>The official API has 382 endpoints and no public OpenAPI spec, which rules out code generation. No existing Scala client is native to Cats Effect with derived strict schemas, a tool runner and otel4s tracing.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>Community project. Not affiliated with or endorsed by Anthropic.</footer>
+</div>

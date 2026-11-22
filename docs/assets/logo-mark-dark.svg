@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="anthropic4s">
+  <title>anthropic4s</title>
+  <path d="M9 25 L9 7 L24 17 H40 L55 7 V45 a11 11 0 0 1 -11 11 H20 a11 11 0 0 1 -11 -11 Z" fill="#7B6CFF" stroke="#7B6CFF" stroke-width="3" stroke-linejoin="round"/>
+  <polyline points="22,47 32,26 42,47" fill="none" stroke="#10131A" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="27.5" y1="40" x2="36.5" y2="40" stroke="#3DE0B8" stroke-width="5" stroke-linecap="round"/>
+</svg>
