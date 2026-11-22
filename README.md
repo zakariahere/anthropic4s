@@ -10,7 +10,7 @@
 <p align="center">A pure-Scala SDK for the Claude API, built on Cats Effect and fs2.</p>
 
 > **Unofficial.** This is a community project. It is not affiliated with or endorsed by Anthropic.
-> **Status:** pre-release. Nothing is published to Maven Central yet; see [Trying it](#trying-it).
+> **Status:** 1.0.0, on Maven Central for Scala 2.13; see [Installing](#installing).
 
 anthropic4s talks to the Claude API directly. It does not wrap the official Java SDK, so it brings no
 Kotlin runtime and no Jackson version to pin. What you get instead:
@@ -201,13 +201,27 @@ Batches, Files, Models. Not yet: Bedrock / Vertex / Foundry, Managed Agents, the
 - **No sampling parameters.** `temperature`, `top_p` and `top_k` are rejected by the current API version,
   so they are not modeled.
 
-## Trying it
+## Installing
 
-```
-sbt publishLocal
+sbt:
+
+```scala
+libraryDependencies += "io.github.zakariahere" %% "anthropic4s" % "1.0.0"
 ```
 
-then depend on `"io.github.zakariahere" %% "anthropic4s" % "<the version it printed>"`.
+Maven:
+
+```xml
+<dependency>
+  <groupId>io.github.zakariahere</groupId>
+  <artifactId>anthropic4s_2.13</artifactId>
+  <version>1.0.0</version>
+</dependency>
+```
+
+Optional modules, same group and version: `anthropic4s-play-json`, `anthropic4s-otel4s`,
+`anthropic4s-testkit`. Versions follow early-semver: every 1.x release is binary compatible with 1.0.0,
+and MiMa checks that in CI.
 
 ## Development
 
