@@ -287,7 +287,7 @@ final class ToolRunner[F[_]] private (messages: Messages[F], tools: List[Tool[F]
 
     def event(e: RunEvent): Out = e.asLeft
 
-    /** The decisions for all calls, or the first abort. Stops asking as soon as one aborts. */
+    // The decisions for all calls, or the first abort. Stops asking as soon as one aborts.
     def decide(
         remaining: List[ContentBlock.ToolUse],
         decided: Vector[(ContentBlock.ToolUse, ToolDecision)]

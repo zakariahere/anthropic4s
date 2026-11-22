@@ -1,12 +1,16 @@
 // anthropic4s — an unofficial, pure-Scala SDK for the Claude API.
 
-ThisBuild / tlBaseVersion       := "0.1"
-ThisBuild / organization        := "io.github.zakariahere"
-ThisBuild / organizationName    := "anthropic4s contributors"
-ThisBuild / startYear           := Some(2026)
-ThisBuild / licenses            := Seq(License.Apache2)
-ThisBuild / developers          := List(tlGitHubDev("zakariahere", "Zakaria"))
-ThisBuild / tlCiReleaseBranches := Seq.empty // nothing is published automatically
+ThisBuild / tlBaseVersion := "1.0"
+ThisBuild / description   := "An unofficial, pure-Scala SDK for the Claude API, built on Cats Effect and fs2"
+ThisBuild / organization  := "io.github.zakariahere"
+ThisBuild / organizationName := "anthropic4s contributors"
+ThisBuild / startYear        := Some(2026)
+ThisBuild / licenses         := Seq(License.Apache2)
+ThisBuild / developers       := List(tlGitHubDev("zakariahere", "Zakaria"))
+// Releases are cut by pushing a `v*` tag; no snapshots are published from branches.
+ThisBuild / tlCiReleaseBranches := Seq.empty
+// The dependency-graph job needs a write token, and this repository's workflow token is read-only.
+ThisBuild / tlCiDependencyGraphJob := false
 
 val Scala213 = "2.13.18"
 val Scala3   = "3.3.6" // the LTS line; only `model` is cross-built for now
