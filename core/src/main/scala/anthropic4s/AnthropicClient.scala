@@ -45,7 +45,7 @@ trait Messages[F[_]] {
   def create(request: MessageRequest, options: RequestOptions): F[Message]
   def create(request: MessageRequest): F[Message] = create(request, RequestOptions.default)
 
-  /** Like [[create]], with the HTTP status, headers and request id alongside the reply. */
+  /** Like `create`, with the HTTP status, headers and request id alongside the reply. */
   def createRaw(request: MessageRequest, options: RequestOptions): F[ApiResponse[Message]]
 
   /**

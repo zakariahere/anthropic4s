@@ -27,7 +27,7 @@ import scala.concurrent.duration.FiniteDuration
  * {{{
  * client.messages.create(request).recoverWith {
  *   case e: AnthropicError.RateLimited => IO.sleep(e.retryAfter.getOrElse(5.seconds)) *> fallback
- *   case e: AnthropicError.Api         => IO.println(s"${e.status} ${e.errorType}: ${e.errorMessage}") *> fallback
+ *   case e: AnthropicError.Api         => IO.println(e.errorMessage) *> fallback
  * }
  * }}}
  */
