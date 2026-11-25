@@ -16,6 +16,9 @@
 
 package anthropic4s.decide
 
+import cats.MonadThrow
+import cats.effect.std.Env
+import cats.syntax.all._
 import org.http4s.Uri
 
 import scala.concurrent.duration._
@@ -45,6 +48,35 @@ object DecideConfig {
 
   def local(port: Int = 8081): DecideConfig = apply(Uri.unsafeFromString(s"http://localhost:$port"))
 
+  /**
+   * Reads the optional `DECIDE_BASE_URL` (default: llama-server on `localhost:8081`), `DECIDE_API_KEY` and
+   * `DECIDE_TIMEOUT` (a duration such as `30s` or `2 minutes`). Blank values count as unset. Fails with
+   * [[DecideError.Configuration]] when a value is set but cannot be read.
+   */
+  def fromEnv[F[_]](implicit F: MonadThrow[F], env: Env[F]): F[DecideConfig] =
+    (env.get("DECIDE_BASE_URL"), env.get("DECIDE_API_KEY"), env.get("DECIDE_TIMEOUT")).tupled.flatMap {
+      case (baseUrl, apiKey, timeout) =>
+        def set(value: Option[String]): Option[String] = value.map(_.trim).filter(_.nonEmpty)
+
+        val base: Either[String, DecideConfig] = set(baseUrl).fold(local().asRight[String]) { url =>
+          Uri.fromString(url).bimap(_ => s"DECIDE_BASE_URL is not a URL: '$url'", apply)
+        }
+        val duration: Either[String, Option[FiniteDuration]] = set(timeout).traverse { text =>
+          Either
+            .catchNonFatal(Duration(text))
+            .toOption
+            .collect {
+              case d: FiniteDuration if d > Duration.Zero => d
+            }
+            .toRight(s"DECIDE_TIMEOUT is not a positive duration such as 30s: '$text'")
+        }
+
+        val config = (base, duration).mapN { (config, timeout) =>
+          val withKey = set(apiKey).fold(config)(config.withApiKey)
+          timeout.fold(withKey)(withKey.withTimeout)
+        }
+        F.fromEither(config.leftMap(new DecideError.Configuration(_)))
+    }
 }
 
 sealed abstract class DecideError(message: String) extends RuntimeException(message) with NoStackTrace
@@ -55,4 +87,11 @@ object DecideError {
       extends DecideError(s"decision endpoint answered $status: $body")
   final class Decode(val detail: String)         extends DecideError(s"unexpected answer: $detail")
   final class Timeout(val after: FiniteDuration) extends DecideError(s"no answer within $after")
+  final class Configuration(val detail: String)  extends DecideError(s"invalid configuration: $detail")
+
+  /** The endpoint could not be reached: refused connection, unknown host, reset. The cause says which. */
+  final class Unavailable(val endpoint: String, cause: Throwable)
+      extends DecideError(s"decision endpoint $endpoint unreachable: $cause") {
+    initCause(cause)
+  }
 }

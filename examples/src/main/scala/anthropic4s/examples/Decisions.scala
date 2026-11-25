@@ -33,7 +33,8 @@ object Team {
 
 /**
  * Routes a support ticket with a small decision model, and asks Claude only when that model is unsure. Needs
- * llama-server serving Kev-4B on port 8081, and `ANTHROPIC_API_KEY` for the escalation path.
+ * a System One server (`DECIDE_BASE_URL`, by default llama-server serving Kev-4B on port 8081), and
+ * `ANTHROPIC_API_KEY` for the escalation path.
  */
 object Decisions extends IOApp.Simple {
 
@@ -55,11 +56,15 @@ object Decisions extends IOApp.Simple {
       .withIdleConnectionTime(Duration.Inf)
       .build
       .use { http =>
-        val decide = Decide.fromClient(http, DecideConfig.local())
-
-        // One request, three typed answers.
-        decide.run(ticket, (team.as("team"), angry.as("angry"), urgency.as("urgency")).tupled).flatMap {
-          case (t, a, u) =>
+        // DECIDE_BASE_URL and friends, or llama-server on this machine when none is set.
+        DecideConfig
+          .fromEnv[IO]
+          .map(Decide.fromClient(http, _))
+          .flatMap { decide =>
+            // One request, three typed answers.
+            decide.run(ticket, (team.as("team"), angry.as("angry"), urgency.as("urgency")).tupled)
+          }
+          .flatMap { case (t, a, u) =>
             val summary = IO.println(
               f"team ${t.choice} (confidence ${t.confidence}%.2f), angry $a%.2f, " +
                 s"urgency ${u.nearest} (most likely ${u.mostLikely})"
@@ -72,7 +77,7 @@ object Decisions extends IOApp.Simple {
                   .fromEnv[IO]
                   .flatMap(config => escalate(AnthropicClient.fromClient(http, config)))
             summary *> next
-        }
+          }
       }
 
   private def escalate(claude: AnthropicClient[IO]): IO[Unit] = {

@@ -61,7 +61,11 @@ object Decide {
       def run[A](state: Json, batch: Batch[A]): F[A] =
         validate(batch) *>
           F.timeoutTo(
-            send(state, batch),
+            // A refused connection, a DNS failure, a reset: the server could not be reached.
+            send(state, batch).adaptError {
+              case e: DecideError => e
+              case e              => new DecideError.Unavailable(config.endpoint.renderString, e)
+            },
             config.timeout,
             F.raiseError(new DecideError.Timeout(config.timeout))
           )

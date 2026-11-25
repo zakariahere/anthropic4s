@@ -201,10 +201,13 @@ Decide.ember[IO](DecideConfig.local()).use { decide =>               // llama-se
 
 - Each question has its own answer type: a choice gives the chosen value, the probability of every option
   and a `confidence`; a score gives `nearest` and `mostLikely` level; a yes/no question gives a probability.
+- Any server, not only localhost: `DecideConfig(uri"https://decide.example.com")`, with `withApiKey` and
+  `withTimeout`. Or `DecideConfig.fromEnv[IO]`, which reads the optional `DECIDE_BASE_URL`,
+  `DECIDE_API_KEY` and `DECIDE_TIMEOUT` (e.g. `30s`), and falls back to `localhost:8081` when none is set.
 - Already using anthropic4s? Pass the same http4s client to both: `Decide.fromClient(http, config)`.
 - Failures are `DecideError`s. Invalid questions (two options with the same label, a score outside 2 to 10
   levels) fail before anything is sent.
-- From Play, `FutureDecide.local()` returns `Future`s; see [docs/play.md](docs/play.md#decision-models).
+- From Play, `FutureDecide.fromEnv()` returns `Future`s; see [docs/play.md](docs/play.md#decision-models).
 
 **With an agent**, let the decision model make the quick calls and Claude do the thinking. Route each
 request to the smallest setup that can handle it, and check risky tool calls before they run:
@@ -285,7 +288,7 @@ is binary compatible with 1.0.0, and MiMa checks that in CI.
 ```
 sbt test                 # everything, no network and no API key needed
 sbt "examples/runMain anthropic4s.examples.Hello"     # needs ANTHROPIC_API_KEY, uses real tokens
-sbt "examples/runMain anthropic4s.examples.FutureDecisions"   # needs llama-server with Kev-4B on :8081
+sbt "examples/runMain anthropic4s.examples.FutureDecisions"   # needs llama-server with Kev-4B on :8081, or DECIDE_BASE_URL
 sbt prePR                # format, license headers, CI workflow
 ```
 

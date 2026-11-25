@@ -16,7 +16,7 @@
 
 package anthropic4s.decide
 
-import cats.effect.{IO, Ref}
+import cats.effect.{IO, Ref, Resource}
 import cats.syntax.all._
 import io.circe.Json
 import io.circe.syntax._
@@ -25,8 +25,9 @@ import org.http4s.circe._
 import org.http4s.client.Client
 import org.http4s.dsl.io._
 import org.http4s.headers.Authorization
-import org.http4s.{AuthScheme, Credentials, Headers, HttpRoutes}
+import org.http4s.{AuthScheme, Credentials, Headers, HttpRoutes, Response}
 
+import java.net.ConnectException
 import scala.concurrent.duration._
 
 class DecideSuite extends CatsEffectSuite {
@@ -202,6 +203,16 @@ class DecideSuite extends CatsEffectSuite {
   test("a missing answer is a decode error") {
     val decide = answering(HttpRoutes.of[IO] { case _ => Ok(Json.obj("answers" -> Json.obj())) })
     interceptIO[DecideError.Decode](decide.ask("msg", angry))
+  }
+
+  test("a server that cannot be reached becomes DecideError.Unavailable, keeping the cause") {
+    val refused =
+      Client[IO](_ => Resource.raiseError[IO, Response[IO], Throwable](new ConnectException("refused")))
+    interceptIO[DecideError.Unavailable](Decide.fromClient(refused, DecideConfig.local()).ask("msg", angry))
+      .map { e =>
+        assertEquals(e.endpoint, "http://localhost:8081/v1/systemone")
+        assert(e.getCause.isInstanceOf[ConnectException], e.getCause)
+      }
   }
 
   test("a slow server becomes DecideError.Timeout") {

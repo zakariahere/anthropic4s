@@ -131,8 +131,9 @@ import cats.syntax.all._   // for .tupled on batches
 @Singleton
 class Triage @Inject() (lifecycle: ApplicationLifecycle)(implicit ec: ExecutionContext) {
 
-  // llama-server on localhost:8081. Use FutureDecide.start(DecideConfig(uri)) for another server.
-  private val decide = FutureDecide.local()
+  // Reads DECIDE_BASE_URL, DECIDE_API_KEY and DECIDE_TIMEOUT, all optional (default: localhost:8081).
+  // To take them from Play config instead: FutureDecide.start(DecideConfig(uri).withApiKey(key)).
+  private val decide = FutureDecide.fromEnv()
   lifecycle.addStopHook(() => decide.close())
 
   def classify(ticket: String): Future[JsObject] =

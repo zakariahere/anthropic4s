@@ -31,7 +31,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
  * class TriageController @Inject() (cc: ControllerComponents, lifecycle: ApplicationLifecycle)(implicit
  *     ec: ExecutionContext
  * ) extends AbstractController(cc) {
- *   private val decide = FutureDecide.local()
+ *   private val decide = FutureDecide.fromEnv() // DECIDE_BASE_URL, or llama-server on localhost:8081
  *   lifecycle.addStopHook(() => decide.close())
  *   private val triage = new Triage(decide)
  *
@@ -59,13 +59,16 @@ final class Triage(decide: FutureDecide)(implicit ec: ExecutionContext) {
       .recover { case e: DecideError => Json.obj("error" -> e.getMessage, "needsHuman" -> true) }
 }
 
-/** Classifies a few tickets with [[Triage]]. Needs llama-server serving Kev-4B on port 8081. */
+/**
+ * Classifies a few tickets with [[Triage]]. Needs a System One server: `DECIDE_BASE_URL`, by default
+ * llama-server on port 8081.
+ */
 object FutureDecisions {
 
   def main(args: Array[String]): Unit = {
     implicit val ec: ExecutionContext = ExecutionContext.global
 
-    val decide  = FutureDecide.local()
+    val decide  = FutureDecide.fromEnv()
     val triage  = new Triage(decide)
     val tickets = List(
       "I was charged twice for my order last week and nobody has replied.",

@@ -71,6 +71,14 @@ object FutureDecide {
   def local(port: Int = 8081)(implicit runtime: IORuntime = IORuntime.global): FutureDecide =
     start(DecideConfig.local(port))
 
+  /**
+   * Starts a client configured from `DECIDE_BASE_URL`, `DECIDE_API_KEY` and `DECIDE_TIMEOUT`, all optional:
+   * with none set, it is the same as [[local]]. Throws [[DecideError.Configuration]] for a value it cannot
+   * read, so a bad deployment fails at startup.
+   */
+  def fromEnv()(implicit runtime: IORuntime = IORuntime.global): FutureDecide =
+    start(DecideConfig.fromEnv[IO].unsafeRunSync())
+
   /** Wraps a client you built yourself (on your own HTTP client, say). */
   def wrap(client: Decide[IO], shutdown: IO[Unit])(implicit
       runtime: IORuntime = IORuntime.global

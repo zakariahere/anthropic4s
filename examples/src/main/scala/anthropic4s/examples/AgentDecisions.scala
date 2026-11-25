@@ -36,7 +36,8 @@ object Intent {
 /**
  * An agent with a small decision model in front of it and beside it. Kev-4B makes the quick calls: it routes
  * each request to the cheapest setup that can handle it, and it checks every booking before it runs. Claude
- * does the thinking. Needs llama-server serving Kev-4B on port 8081, and `ANTHROPIC_API_KEY`.
+ * does the thinking. Needs a System One server (`DECIDE_BASE_URL`, by default llama-server serving Kev-4B on
+ * port 8081), and `ANTHROPIC_API_KEY`.
  */
 object AgentDecisions extends IOApp.Simple {
 
@@ -86,12 +87,14 @@ object AgentDecisions extends IOApp.Simple {
       .withIdleConnectionTime(Duration.Inf)
       .build
       .use { http =>
-        AnthropicConfig.fromEnv[IO].flatMap { config =>
-          val claude = AnthropicClient.fromClient(http, config)
-          val decide = Decide.fromClient(http, DecideConfig.local())
-          requests.traverse_ { text =>
-            IO.println(s"\n> $text") *> handle(claude, decide, text).flatMap(IO.println)
-          }
+        // Both configured from the environment: ANTHROPIC_* for Claude, DECIDE_* for the decision model.
+        (AnthropicConfig.fromEnv[IO], DecideConfig.fromEnv[IO]).tupled.flatMap {
+          case (config, decideConfig) =>
+            val claude = AnthropicClient.fromClient(http, config)
+            val decide = Decide.fromClient(http, decideConfig)
+            requests.traverse_ { text =>
+              IO.println(s"\n> $text") *> handle(claude, decide, text).flatMap(IO.println)
+            }
         }
       }
 
