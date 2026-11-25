@@ -114,3 +114,38 @@ val answer: Future[String] = anthropic.runTools(request, List(findOrder)).map(_.
 ```scala
 anthropic.run(anthropic.client.models.listAll.compile.toList)   // Future[List[ModelInfo]]
 ```
+
+## Decision models
+
+`anthropic4s-decide` has its own `Future` facade, `FutureDecide`, for classifying from a controller without
+calling Claude. It does not need the rest of anthropic4s:
+
+```scala
+libraryDependencies += "io.github.zakariahere" %% "anthropic4s-decide" % anthropic4sVersion   // 1.1.0+
+```
+
+```scala
+import anthropic4s.decide._
+import cats.syntax.all._   // for .tupled on batches
+
+@Singleton
+class Triage @Inject() (lifecycle: ApplicationLifecycle)(implicit ec: ExecutionContext) {
+
+  // Reads DECIDE_BASE_URL, DECIDE_API_KEY and DECIDE_TIMEOUT, all optional (default: localhost:8081).
+  // To take them from Play config instead: FutureDecide.start(DecideConfig(uri).withApiKey(key)).
+  private val decide = FutureDecide.fromEnv()
+  lifecycle.addStopHook(() => decide.close())
+
+  def classify(ticket: String): Future[JsObject] =
+    decide
+      .run(ticket, (team.as("team"), urgency.as("urgency")).tupled)   // one request, two answers
+      .map { case (t, u) =>
+        Json.obj("team" -> t.choice.toString, "urgency" -> u.mostLikely, "needsHuman" -> (t.confidence < 0.8))
+      }
+      // The decision model is a shortcut, not a dependency: if it is down, a human triages.
+      .recover { case e: DecideError => Json.obj("error" -> e.getMessage, "needsHuman" -> true) }
+}
+```
+
+The questions are defined as in the [README](../README.md#decision-models). A complete version is
+[`FutureDecisions`](../examples/src/main/scala/anthropic4s/examples/FutureDecisions.scala).
