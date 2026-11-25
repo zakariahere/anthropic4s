@@ -1,6 +1,6 @@
 // anthropic4s — an unofficial, pure-Scala SDK for the Claude API.
 
-ThisBuild / tlBaseVersion := "1.0"
+ThisBuild / tlBaseVersion := "1.1"
 ThisBuild / description   := "An unofficial, pure-Scala SDK for the Claude API, built on Cats Effect and fs2"
 ThisBuild / organization  := "io.github.zakariahere"
 ThisBuild / organizationName := "anthropic4s contributors"
@@ -49,7 +49,7 @@ val commonSettings = Seq(
 lazy val root = project
   .in(file("."))
   .enablePlugins(NoPublishPlugin)
-  .aggregate(model, schema, core, ember, playJson, testkit, otel, examples)
+  .aggregate(model, schema, core, ember, playJson, testkit, otel, decide, examples)
 
 lazy val schema = project
   .in(file("schema"))
@@ -155,16 +155,37 @@ lazy val otel = project
     )
   )
 
+// A client for System One decision endpoints (llama-server running Kev-4B, TypeSafe's Jev, ...).
+// It does not depend on core, so using it does not pull in the Claude SDK.
+lazy val decide = project
+  .in(file("decide"))
+  .settings(commonSettings)
+  .settings(
+    name := "anthropic4s-decide",
+    // New in 1.1: MiMa must not look for a 1.0.x release of this artifact, there is none.
+    tlVersionIntroduced := Map("2.13" -> "1.1.0"),
+    libraryDependencies ++= Seq(
+      "org.typelevel" %% "cats-effect"   % V.catsEffect,
+      "org.http4s"    %% "http4s-client" % V.http4s,
+      "org.http4s"    %% "http4s-circe"  % V.http4s,
+      // For Decide.ember and FutureDecide, so that using it alone needs no other dependency.
+      "org.http4s"    %% "http4s-ember-client" % V.http4s,
+      "org.typelevel" %% "munit-cats-effect"   % V.munitCatsEffect % Test,
+      "org.http4s"    %% "http4s-dsl"          % V.http4s          % Test
+    )
+  )
+
 // Runnable examples. They are compiled with the build, which keeps the documentation honest.
 lazy val examples = project
   .in(file("examples"))
   .enablePlugins(NoPublishPlugin)
-  .dependsOn(ember, playJson, otel)
+  .dependsOn(ember, playJson, otel, decide, testkit % Test)
   .settings(commonSettings)
   .settings(
     name := "anthropic4s-examples",
     libraryDependencies ++= Seq(
-      "org.typelevel" %% "otel4s-oteljava" % V.otel4s,
+      "org.typelevel" %% "munit-cats-effect" % V.munitCatsEffect % Test,
+      "org.typelevel" %% "otel4s-oteljava"   % V.otel4s,
       // The Traced example sends spans over OTLP (to localhost:4318 unless OTEL_EXPORTER_OTLP_ENDPOINT says otherwise).
       "io.opentelemetry" % "opentelemetry-exporter-otlp" % "1.68.0",
       "org.slf4j" % "slf4j-nop" % "1.7.36" // the examples do not log; this keeps SLF4J quiet

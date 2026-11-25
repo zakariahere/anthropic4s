@@ -174,6 +174,62 @@ for {
 } yield assertEquals(result.text, "Rainy.")
 ```
 
+## Decision models
+
+`anthropic4s-decide` talks to a **decision model**: a small model that picks an answer and returns
+calibrated probabilities, instead of writing text. It speaks the System One protocol (`POST
+/v1/systemone`), served for example by llama-server running Kev-4B. Typical answers take tens of
+milliseconds, and no output tokens. The module does not depend on the rest of anthropic4s.
+
+```scala
+import anthropic4s.decide._
+
+val team = Question.choice[Team]("Which team should handle this?")(
+  Criterion(Team.Billing, "billing", "payments, charges, refunds, invoices"),
+  Criterion(Team.Shipping, "shipping", "delivery, tracking, lost or late parcels"),
+  Criterion(Team.Technical, "technical", "bugs, errors, login problems")
+)
+val angry   = Question.noul("Is the customer angry?")                // a yes/no question
+val urgency = Question.score("How urgent is this?")("can wait", "this week", "today", "right now")
+
+Decide.ember[IO](DecideConfig.local()).use { decide =>               // llama-server on localhost:8081
+  decide.ask(ticket, team)                                           // IO[ChoiceAnswer[Team]]
+  decide.run(ticket, (team.as("team"), angry.as("angry"), urgency.as("urgency")).tupled)
+  // one request: IO[(ChoiceAnswer[Team], Double, ScoreAnswer)]
+}
+```
+
+- Each question has its own answer type: a choice gives the chosen value, the probability of every option
+  and a `confidence`; a score gives `nearest` and `mostLikely` level; a yes/no question gives a probability.
+- Already using anthropic4s? Pass the same http4s client to both: `Decide.fromClient(http, config)`.
+- Failures are `DecideError`s. Invalid questions (two options with the same label, a score outside 2 to 10
+  levels) fail before anything is sent.
+- From Play, `FutureDecide.local()` returns `Future`s; see [docs/play.md](docs/play.md#decision-models).
+
+**With an agent**, let the decision model make the quick calls and Claude do the thinking. Route each
+request to the smallest setup that can handle it, and check risky tool calls before they run:
+
+```scala
+RunnerConfig.default[IO].withBeforeTool { call =>
+  if (call.name != "book_table") IO.pure(ToolDecision.Allow)
+  else
+    decide.ask(conversation(userText), bookingAsked).map { p =>
+      if (p >= 0.5) ToolDecision.Allow
+      else ToolDecision.Deny("The user did not ask for a booking. Do not book anything.")
+    }
+    .handleError(_ => ToolDecision.Deny("Bookings cannot be checked right now."))   // fail closed
+}
+```
+
+A denied call never runs; Claude gets the reason as a tool error and carries on. The full router and guard
+are in [`AgentDecisions`](examples/src/main/scala/anthropic4s/examples/AgentDecisions.scala). Two things
+learned while tuning them:
+
+- **Describe what an option needs, not what it is about.** "Should I eat outside tonight?" never says
+  "weather"; a criterion like "needs today's weather to answer" catches it.
+- **Confidence is not the top probability.** It is `(p − 1/n) / (1 − 1/n)`, so with three options a 0.53
+  favourite is only 0.29 confident. Pick thresholds per question.
+
 ## Modules
 
 | Artifact | What it is |
@@ -185,6 +241,7 @@ for {
 | `anthropic4s-play-json` | Structured outputs and tool arguments from Play JSON `Format`s |
 | `anthropic4s-otel4s` | OpenTelemetry tracing |
 | `anthropic4s-testkit` | `ScriptedModel` and reply builders for tests |
+| `anthropic4s-decide` | A client for System One decision models, plus `FutureDecide`. Usable on its own (new in 1.1) |
 
 Scala 2.13, JDK 17+. Covered: Messages (create, stream, count tokens), tools, structured outputs,
 Batches, Files, Models. Not yet: Bedrock / Vertex / Foundry, Managed Agents, the Admin API, Scala 3.
@@ -220,14 +277,15 @@ Maven:
 ```
 
 Optional modules, same group and version: `anthropic4s-play-json`, `anthropic4s-otel4s`,
-`anthropic4s-testkit`. Versions follow early-semver: every 1.x release is binary compatible with 1.0.0,
-and MiMa checks that in CI.
+`anthropic4s-testkit`, and from 1.1.0 `anthropic4s-decide`. Versions follow early-semver: every 1.x release
+is binary compatible with 1.0.0, and MiMa checks that in CI.
 
 ## Development
 
 ```
 sbt test                 # everything, no network and no API key needed
 sbt "examples/runMain anthropic4s.examples.Hello"     # needs ANTHROPIC_API_KEY, uses real tokens
+sbt "examples/runMain anthropic4s.examples.FutureDecisions"   # needs llama-server with Kev-4B on :8081
 sbt prePR                # format, license headers, CI workflow
 ```
 
